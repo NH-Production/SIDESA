@@ -1,0 +1,42 @@
+name: Import OpenSID source
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: import-opensid-source
+  cancel-in-progress: false
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout SIDESA
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Clone upstream OpenSID
+        run: git clone --depth 1 --branch umum https://github.com/OpenSID/OpenSID.git /tmp/opensid-upstream
+
+      - name: Copy OpenSID source into SIDESA
+        run: |
+          rsync -a --delete \
+            --exclude='.git/' \
+            --exclude='.github/workflows/import-opensid.yml' \
+            /tmp/opensid-upstream/ ./
+
+      - name: Commit and push imported source
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No source changes to import."
+            exit 0
+          fi
+          git commit -m "Import OpenSID upstream source (branch umum)"
+          git push origin HEAD:main
